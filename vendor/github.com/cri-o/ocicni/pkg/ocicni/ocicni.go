@@ -198,6 +198,7 @@ func initCNI(exec cniinvoke.Exec, cacheDir, defaultNetName string, confDir strin
 	if len(binDirs) == 0 {
 		binDirs = []string{DefaultBinDir}
 	}
+	logrus.Errorf("XXX: initCNI: %s, %s", cacheDir, defaultNetName)
 	plugin := &cniNetworkPlugin{
 		defaultNetName: defaultNetName,
 		networks:       make(map[string]*cniNetwork),
@@ -258,6 +259,7 @@ func loadNetworks(exec cniinvoke.Exec, confDir string, binDirs []string) (map[st
 	sort.Strings(files)
 	for _, confFile := range files {
 		var confList *libcni.NetworkConfigList
+		logrus.Errorf("XXX: loadNetworks1: %s", confFile)
 		if strings.HasSuffix(confFile, ".conflist") {
 			confList, err = libcni.ConfListFromFile(confFile)
 			if err != nil {
@@ -289,12 +291,22 @@ func loadNetworks(exec cniinvoke.Exec, confDir string, binDirs []string) (map[st
 		}
 
 		logrus.Infof("Found CNI network %s (type=%v) at %s", confList.Name, confList.Plugins[0].Network.Type, confFile)
+		logrus.Errorf("Found CNI network %s (type=%v) at %s", confList.Name, confList.Plugins[0].Network.Type, confFile)
 
-		networks[confList.Name] = &cniNetwork{
-			name:          confList.Name,
-			filePath:      confFile,
-			NetworkConfig: confList,
-			CNIConfig:     libcni.NewCNIConfig(binDirs, exec),
+		if networks[defaultNetName] != nil {
+			logrus.Errorf("XXX loadNetworks3: %s", networks[defaultNetName].filePath)
+		}
+		if _, ok := networks[defaultNetName]; !ok {
+			networks[confList.Name] = &cniNetwork{
+				name:          confList.Name,
+				filePath:      confFile,
+				NetworkConfig: confList,
+				CNIConfig:     libcni.NewCNIConfig(binDirs, exec),
+			}
+		}
+		logrus.Errorf("Found CNI network %s (type=%v) at %s", confList.Name, confList.Plugins[0].Network.Type, confFile)
+		if networks[defaultNetName] != nil {
+			logrus.Errorf("XXX loadNetworks4: %s", networks[defaultNetName].filePath)
 		}
 
 		if defaultNetName == "" {
@@ -302,6 +314,7 @@ func loadNetworks(exec cniinvoke.Exec, confDir string, binDirs []string) (map[st
 		}
 	}
 
+	logrus.Errorf("loadNetworks2: %s", defaultNetName)
 	return networks, defaultNetName, nil
 }
 
@@ -340,6 +353,12 @@ func (plugin *cniNetworkPlugin) syncNetworkConfig() error {
 	}
 	plugin.networks = networks
 
+	//XXX
+	if networks[defaultNetName] != nil {
+		logrus.Errorf("XXX: syncNetworkConfig: %s %v", defaultNetName, networks[defaultNetName].filePath)
+	} else {
+		logrus.Errorf("XXX: syncNetworkConfig: %s", defaultNetName)
+	}
 	return nil
 }
 
